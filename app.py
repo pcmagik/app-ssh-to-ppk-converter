@@ -3,12 +3,18 @@ import os
 import subprocess
 import tempfile
 from werkzeug.utils import secure_filename
+import logging
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 app.config['UPLOAD_FOLDER'] = tempfile.gettempdir()
 
+# Na początku pliku, po inicjalizacji aplikacji Flask
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 def convert_key(ssh_key_path):
+    logger.debug(f"Rozpoczęcie konwersji pliku: {ssh_key_path}")
     # Generowanie nazw plików tymczasowych
     pem_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp.pem')
     ppk_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp.ppk')
@@ -36,6 +42,9 @@ def index():
 
 @app.route('/convert', methods=['POST'])
 def convert():
+    temp_input_path = None
+    ppk_path = None  # Inicjalizacja zmiennej na początku funkcji
+    
     if 'file' not in request.files:
         return jsonify({'error': 'Brak pliku'}), 400
     
@@ -63,9 +72,9 @@ def convert():
     
     finally:
         # Wyczyść pliki tymczasowe
-        if os.path.exists(temp_input_path):
+        if temp_input_path and os.path.exists(temp_input_path):
             os.remove(temp_input_path)
-        if os.path.exists(ppk_path):
+        if ppk_path and os.path.exists(ppk_path):
             os.remove(ppk_path)
 
 if __name__ == '__main__':
