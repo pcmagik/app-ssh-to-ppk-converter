@@ -20,17 +20,27 @@ def convert_key(ssh_key_path):
     ppk_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp.ppk')
     
     try:
-        # Konwersja do formatu PEM
-        subprocess.run(['openssl', 'rsa', '-in', ssh_key_path, '-outform', 'PEM', '-out', pem_path], 
-                      check=True, capture_output=True)
-        
-        # Konwersja do formatu PPK
-        subprocess.run(['puttygen', pem_path, '-o', ppk_path, '-O', 'private'], 
-                      check=True, capture_output=True)
+        # Sprawdzenie typu klucza i odpowiednia konwersja
+        try:
+            # Próba bezpośredniej konwersji do PPK
+            subprocess.run(['puttygen', ssh_key_path, '-o', ppk_path, '-O', 'private'], 
+                         check=True, capture_output=True)
+        except subprocess.CalledProcessError:
+            # Jeśli bezpośrednia konwersja nie zadziała, próbujemy przez PEM
+            logger.debug("Próba konwersji przez format PEM")
+            # Konwersja do formatu PEM
+            subprocess.run(['ssh-keygen', '-p', '-m', 'PEM', '-f', ssh_key_path, '-N', ''], 
+                         check=True, capture_output=True)
+            
+            # Konwersja PEM do PPK
+            subprocess.run(['puttygen', ssh_key_path, '-o', ppk_path, '-O', 'private'], 
+                         check=True, capture_output=True)
         
         return ppk_path
     except subprocess.CalledProcessError as e:
-        raise Exception(f"Błąd konwersji: {e.stderr.decode()}")
+        error_msg = e.stderr.decode() if e.stderr else str(e)
+        logger.error(f"Błąd konwersji: {error_msg}")
+        raise Exception(f"Błąd konwersji: {error_msg}")
     finally:
         # Czyszczenie plików tymczasowych
         if os.path.exists(pem_path):

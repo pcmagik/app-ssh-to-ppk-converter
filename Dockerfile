@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     openssl \
     putty-tools \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Ustawienie katalogu roboczego
